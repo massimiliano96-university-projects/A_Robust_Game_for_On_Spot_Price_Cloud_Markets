@@ -1,0 +1,93 @@
+
+SAAS_PROBLEM 0
+
+
+# Application : 0
+
+- WS0
+  LAMBDA: 648
+  lambda : 518.4
+  D : 0.0325234
+  mu : 342
+  R_bar : 0.0487851
+  nu : 4.5e-05
+
+- WS0
+  LAMBDA: 709
+  lambda : 567.2
+  D : 0.0230535
+  mu : 333
+  R_bar : 0.0345802
+  nu : 4.5e-05
+
+
+# Application : 1
+
+- WS0
+  LAMBDA: 709
+  lambda : 567.2
+  D : 0.0230535
+  mu : 333
+  R_bar : 0.0345802
+  nu : 4.5e-05
+
+- WS0
+  LAMBDA: 624
+  lambda : 499.2
+  D : 0.0443564
+  mu : 248
+  R_bar : 0.0665346
+  nu : 4.5e-05
+
+SAAS_PROBLEM 1
+
+
+# Application : 0
+
+- WS0
+  LAMBDA: 709
+  lambda : 567.2
+  D : 0.0230535
+  mu : 333
+  R_bar : 0.0345802
+  nu : 4.5e-05
+
+- WS0
+  LAMBDA: 624
+  lambda : 499.2
+  D : 0.0443564
+  mu : 248
+  R_bar : 0.0665346
+  nu : 4.5e-05
+
+- WS0
+  LAMBDA: 730
+  lambda : 584
+  D : 0.0235088
+  mu : 281
+  R_bar : 0.0352632
+  nu : 4.5e-05
+
+SAAS_PROBLEM 2
+
+
+# Application : 0
+
+- WS0
+  LAMBDA: 624
+  lambda : 499.2
+  D : 0.0443564
+  mu : 248
+  R_bar : 0.0665346
+  nu : 4.5e-05
+
+
+# Application : 1
+
+- WS0
+  LAMBDA: 730
+  lambda : 584
+  D : 0.0235088
+  mu : 281
+  R_bar : 0.0352632
+  nu : 4.5e-05
