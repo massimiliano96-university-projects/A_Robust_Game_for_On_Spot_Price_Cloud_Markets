@@ -55,5 +55,7 @@ public:
 
   void reset_SaaSs_given_on_spot( void );     // this function reset the given_on_spot for each SaaS before of each call of solve_greedy()
 
+  void print_response_time( std::ofstream& );       // this function creates a file in which it prints the response time and the throughput for each web service of the systems
+
 };
 #endif

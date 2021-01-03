@@ -198,33 +198,25 @@ void SaaS_Problem::solve(void)
 
     model.optimize();                                                                     // optimize the model
 
-/*
       // for debugging
       for(unsigned i = 0; i < x_v.size(); i++)
       {
-        std::cout << "X = " << x_v[i].get(GRB_DoubleAttr_X) << '\n';
-        std::cout << "y = "<<  y_v[i].get(GRB_DoubleAttr_X)<< '\n';
-        //std::cout << " alpha = "<< alpha_v[i].get(GRB_DoubleAttr_X) << '\n';
+        s->set_throughput(x_v[i].get(GRB_DoubleAttr_X) );
       }
 
-      for( unsigned i = 0; i < beta_v.size(); i++)
-      {
-        std::cout << " beta = "<< beta_v[i].get(GRB_DoubleAttr_X) << '\n';
-      }
 
-      std::cout << "beta_size = "<< beta_v.size()  << '\n';
-*/
     for(unsigned i = 0; i < y_v.size(); i++)                                                               // computing the total number of rejected requests
     {
       rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
     }
 
 
+
     // Now i store the variables in SaaS
     for(unsigned i = 0; i < (*s).get_size(); i++)                                                          // cicle over all the applications of the SaaS
     {
 
-      auto app = (*s).get_applications()[i];
+      application app = (*s).get_applications()[i];
 
       std::string r_a = "r" + std::to_string(i);                                                           // create the name for the variables
       std::string d_a = "d" + std::to_string(i);
@@ -237,14 +229,6 @@ void SaaS_Problem::solve(void)
 
 
       s->set_desired_on_spot( app,   eta_j/(1-eta_j) * ( s -> get_on_demand(app) + s -> get_on_flat(app) ));
-
-
-      /*
-            std::cout << "desired= "<< eta_j/(1-eta_j)*( s -> get_on_demand(app) + s -> get_on_flat(app))<< '\n'; // debugging
-            std::cout << "on_flat= "<< r.get(GRB_DoubleAttr_X) << '\n'; // debugging
-            std::cout << "on_demand= "<< d.get(GRB_DoubleAttr_X) << '\n'; // debugging
-      */
-
     }
 
     objective_function_value = model.get(GRB_DoubleAttr_ObjVal);

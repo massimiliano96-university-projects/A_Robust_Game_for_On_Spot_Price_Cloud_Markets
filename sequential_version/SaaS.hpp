@@ -24,7 +24,10 @@ class SaaS
 
     double cost_threshold;  //sigma_j_bar
 
-    unsigned find_application(const application &) const;
+    std::vector<double> response_time;
+    std::vector<double> throughput;
+
+    unsigned find_application( const application &) const;
 
   public:
 
@@ -41,6 +44,7 @@ class SaaS
 
     };
 
+    void compute_response_time( void );
 
   //getters:
     const std::vector<application>& get_applications (void) const;
@@ -59,6 +63,10 @@ class SaaS
 
     double get_cost_threshold ( void ) const;
 
+    double get_throughput( unsigned ) const ;
+
+    double get_response_time( unsigned ) const;
+
   //setters:
     void  add_application(  const application &);
 
@@ -73,6 +81,8 @@ class SaaS
     void set_given_on_spot ( const application & , double);
 
     void set_cost_threshold (double);
+
+    void set_throughput(double);
 
   //oprator<
     bool operator< ( const SaaS & );

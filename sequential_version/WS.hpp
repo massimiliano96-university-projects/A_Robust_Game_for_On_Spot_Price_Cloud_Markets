@@ -21,6 +21,7 @@ private:
 
   double nu_a_w;                // Penalty for rejecting a single WS w request for application a
 
+
 public:
 
   //constructor
@@ -41,6 +42,7 @@ public:
 
   double get_nu_a_w(void);
 
+
   //setters
   void set_LAMBDA_a_w( double value );
 
@@ -53,6 +55,7 @@ public:
   void set_R_bar_a_w( double value );
 
   void set_nu_a_w( double value );
+
 
   //methods
   bool operator== (const WS &) const;

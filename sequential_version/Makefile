@@ -1,4 +1,4 @@
-CXXFLAGS += -Wall -std=c++11 -I/opt/gurobi901/linux64/include -L/opt/gurobi901/linux64/lib -lgurobi_c++ -lgurobi90
+CXXFLAGS += -Wall -std=c++11 -I/opt/gurobi910/linux64/include -L/opt/gurobi910/linux64/lib -lgurobi_c++ -lgurobi91
 
 
 EXE = exe
@@ -23,7 +23,7 @@ all : build
 build : $(EXE)
 
 $(EXE) : $(OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) $^ $(OUTPUT_OPTION) -I/opt/gurobi901/linux64/include -L/opt/gurobi901/linux64/lib -lgurobi_c++ -lgurobi90
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) $^ $(OUTPUT_OPTION) -I/opt/gurobi910/linux64/include -L/opt/gurobi910/linux64/lib -lgurobi_c++ -lgurobi91
 
 clean:
 	$(RM) *.o

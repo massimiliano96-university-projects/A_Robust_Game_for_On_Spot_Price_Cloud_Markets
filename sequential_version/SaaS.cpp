@@ -117,3 +117,50 @@ bool SaaS::operator<( const SaaS& other)
 {
   return get_cost_threshold() <= other.get_cost_threshold();
 }
+
+void SaaS::compute_response_time( void )
+{
+
+  for ( unsigned i = 0; i < applications.size(); i++ )
+  {
+    application app = applications[i];
+
+    double total_VM = on_flat[i] + on_demand[i] + on_spot[i];
+
+    auto web_services = app.get_web_services();
+
+    double total_throughput = .0;
+
+    for ( unsigned j = i; j < i + app.get_size(); j++)
+    {
+      total_throughput += throughput[j];
+    }
+
+    for ( unsigned j = 0; j < app.get_size(); j++)
+    {
+      WS current_ws = web_services[j];
+
+      double resp_time = .0;
+
+      resp_time = current_ws.get_D_a_w() + 1 / ( current_ws.get_mu_a_w() - total_throughput / total_VM );
+
+      response_time.push_back(resp_time);
+
+    }
+  }
+}
+
+void SaaS::set_throughput(double value)
+{
+  throughput.push_back(value);
+}
+
+double SaaS::get_throughput(unsigned index) const
+{
+  return throughput[index];
+}
+
+double SaaS::get_response_time(unsigned index) const
+{
+  return response_time[index];
+}

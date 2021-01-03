@@ -303,6 +303,7 @@ void Game::solve( void )
     saass[i] -> solve();  // then we solve again the SaaS problem, in order to compute the right number of on_flat and on_demand VMs, taking into account the final number of on_spot VMS
     saass[i] -> reset_desired(); // here we reset the desired_on_spot which are meaningless at this step ( we have already computed the final number of on_spot)
     saass[i] -> rounding(); // now round the problem in order to get the integer values
+    saass[i] -> get_SaaS() -> compute_response_time();
   }
 
   // then print the results in results.txt
@@ -310,6 +311,56 @@ void Game::solve( void )
   std::ofstream ofs1;
   ofs1.open( output_file1, std::ios::out | std::ios::trunc ); // i open the file and delete everything
 
+  std::string resp_time_file("response_time.csv");
+  std::ofstream ofs2;
+  ofs2.open( resp_time_file, std::ios::out | std::ios::trunc ); // i open the file and delete everything
+
   print( ofs1 );
+  print_response_time( ofs2 );
+
+}
+
+
+void Game::print_response_time( std::ofstream& ofs1 )
+{
+  double current_throughput = .0;
+  double current_response_time = .0;
+
+  // we put an index in order to understand the WS, the app and the SaaS of a given line of parameters
+  unsigned SaaS_index = 0;
+  unsigned app_index = 0;
+  unsigned WS_index = 0;
+
+  ofs1 <<  "Throughput, response_time , SaaS_index , app_index , WS_index\n";
+
+  for( auto & saas : SaaSs )
+  {
+
+    auto current_saas = saas -> get_SaaS();
+    auto apps = current_saas -> get_applications();
+
+    unsigned current_index = 0;
+
+    for( unsigned i = 0; i < apps.size(); i ++ )
+    {
+      for( unsigned j = 0; j < apps[i].get_size(); j++)
+      {
+        current_throughput = current_saas -> get_throughput(current_index);
+        current_response_time= current_saas -> get_response_time(current_index);
+
+        ofs1 << current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
+
+        WS_index++;
+        current_index++;
+      }
+
+    WS_index = 0;
+    app_index++;
+
+    }
+    app_index = 0;
+    SaaS_index++;
+
+  }
 
 }
