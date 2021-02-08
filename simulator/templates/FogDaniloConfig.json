@@ -1,0 +1,1 @@
+{"name": "Test1", "nservers": 1, "max_request": -1, "workload": {"class1": {"lambda": 150, "mu_min": 200, "mu_max": 200, "delay_min": 0.005, "delay_max": 0.005}, "class2": {"lambda": 150, "mu_min": 200, "mu_max": 200, "delay_min": 0.005, "delay_max": 0.005}}}

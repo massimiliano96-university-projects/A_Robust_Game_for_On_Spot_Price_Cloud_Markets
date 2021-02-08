@@ -147,7 +147,7 @@ void SaaS_Problem::solve(void)
 
         GRBVar x = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);                          // creating X_a_w
 
-        model.addConstr( x >= web_service.get_lambda_a_w() );                                       // X_a_w >= lambda_a_w
+        model.addConstr( x >= web_service.get_lambda_a_w() + 1);                                       // X_a_w >= lambda_a_w
         model.addConstr( y + x >= web_service.get_LAMBDA_a_w() );                                   // X_a_w + y_a_w >= LAMBDA_a_w
 
 
@@ -190,9 +190,18 @@ void SaaS_Problem::solve(void)
 
       }
     }
+    /*
+    GRBVar ceil_tot_VM = model.addVar(0, GRB_INFINITY, 0, GRB_INTEGER);
+    model.addConstr( total_VM <= ceil_tot_VM );
+    model.addConstr( ceil_tot_VM - 1 <= total_VM + 0.000001);
 
+    GRBVar ceil_tot_on_spot = model.addVar(0, GRB_INFINITY, 0, GRB_INTEGER);
+    model.addConstr( total_on_spot <= ceil_tot_on_spot );
+    model.addConstr( ceil_tot_on_spot - 1 <= total_on_spot + 0.000001);
+    */
     model.addConstr( total_on_flat <= R_j);                                     // sum of r_a less or equal to R_j_bar
-    model.addConstr(total_VM <= N - total_on_spot );                            //  the sum the on flat and on demand VMs lessor equal to N - on_spot VM
+    //model.addConstr(ceil_tot_VM <= N - ceil_tot_on_spot );                            //  the sum the on flat and on demand VMs lessor equal to N - on_spot VM
+    model.addConstr(total_VM <= N - total_on_spot );
 
     model.setObjective(obj, GRB_MINIMIZE);                                                // set the objective function
 
@@ -210,7 +219,11 @@ void SaaS_Problem::solve(void)
       rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
     }
 
-
+    /*
+    std::cout << "ceil tot vm = "<< ceil_tot_VM.get(GRB_DoubleAttr_X) << '\n';
+    std::cout << "tot vm = "<< total_VM.getValue() << '\n';
+    std::cout << "ceil tot spot = "<< ceil_tot_on_spot.get(GRB_DoubleAttr_X) << '\n';
+    */
 
     // Now i store the variables in SaaS
     for(unsigned i = 0; i < (*s).get_size(); i++)                                                          // cicle over all the applications of the SaaS
@@ -222,11 +235,11 @@ void SaaS_Problem::solve(void)
       std::string d_a = "d" + std::to_string(i);
 
       GRBVar r = model.getVarByName(r_a);
-      s->set_on_flat(app, r.get(GRB_DoubleAttr_X));                                                        //store on flat VMs for the application i
+      s->set_on_flat(app, r.get(GRB_DoubleAttr_X));                                           //store on flat VMs for the application i
 
       GRBVar d = model.getVarByName(d_a);
-      s->set_on_demand(app, d.get(GRB_DoubleAttr_X));                                                      //store on demand VMs for the application i
-
+      s->set_on_demand(app, d.get(GRB_DoubleAttr_X));                                                 //store on demand VMs for the application i
+      std::cout << "d = "<< d.get(GRB_DoubleAttr_X)<< '\n';
 
       s->set_desired_on_spot( app,   eta_j/(1-eta_j) * ( s -> get_on_demand(app) + s -> get_on_flat(app) ));
     }
@@ -366,7 +379,7 @@ void SaaS_Problem::rounding( void )
   for(auto app : apps )
   {
     total_on_flat += std::floor( s -> get_on_flat(app) );
-    // i need to compute the total number of on_flat VMs in order to respect the constraint : tot_on_flat <= R_j
+    // I need to compute the total number of on_flat VMs in order to respect the constraint : tot_on_flat <= R_j
   }
 
   double residuals = .0; // we have to compute the total "residual_VM", i.e. the number of VM we need to add in order to satisfy the SaaS's requirements after the floor_rounding
@@ -374,11 +387,28 @@ void SaaS_Problem::rounding( void )
   for(auto app : apps ) // iterate among all the apps
   {
     double on_flat =  s -> get_on_flat(app);
+    //std::cout << "on_flat = "<< on_flat << '\n';
     double on_demand = s -> get_on_demand(app);
+    //std::cout << "on_demand = "<< on_demand << '\n';
     double desired_on_spot  = s -> get_desired_on_spot(app);
+    //std::cout << "desired_on_spot = "<< desired_on_spot << '\n';
+    //std::cout << "floor on_demand ="<< std::floor(on_demand) << '\n';
 
-    residuals = on_flat - std::floor(on_flat)  + on_demand - std::floor(on_demand) + desired_on_spot - std::floor(desired_on_spot) ; // compute the residuals
-    count = std::ceil(residuals); // we have to round the residuals to the next integer in order to satisfy the requirements
+    residuals = on_flat - std::floor(on_flat)  + on_demand - std::floor(on_demand); // compute the residuals + desired_on_spot - std::floor(desired_on_spot)
+
+    /*
+    if (residuals < 0.000001) {
+      count = std::floor(residuals);
+    }
+    else
+    {
+      count = std::ceil(residuals);
+    }
+    std::cout << "residuals= "<< residuals << '\n';
+ // we have to round the residuals to the next integer in order to satisfy the requirements
+    std::cout << "count= "<< count << '\n';
+    */
+    count = std::ceil(residuals);
 
     s -> set_desired_on_spot( app, std::floor(desired_on_spot)); // we have took the maximum number of desired_on_spot hence I can't have more of them
 
@@ -419,13 +449,13 @@ void SaaS_Problem::rounding( void )
       s -> set_on_flat( app, std::floor(on_flat));
       s -> set_on_demand( app, std::floor(on_demand ) + 2 );
     }
-    else if( total_on_flat + 1 <= R_j )
+    else if( count == 1 && total_on_flat + 1 <= R_j )
     {
       s -> set_on_flat( app, std::floor(on_flat) + 1 );
       s -> set_on_demand( app, std::floor(on_demand ));
       total_on_flat += 1;
     }
-    else
+    else if( count == 1 )
     {
       s -> set_on_flat( app, std::floor(on_flat));
       s -> set_on_demand( app, std::floor(on_demand ) + 1 );

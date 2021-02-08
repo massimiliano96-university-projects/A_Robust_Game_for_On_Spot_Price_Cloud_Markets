@@ -64,16 +64,17 @@ std::shared_ptr< IaaS_Problem > Game::get_iaas( void )
   it returns a pair which has as first component the total number of VMs needed by the system of SaaSs, nad as second component
   a vector which contains the number of VMs for each SaaS
 */
-double Game::compute_total_n( void )
+unsigned Game::compute_total_n( void )
 {
-  double total_n = 0; // total number of VMs requested
+  unsigned total_n = 0; // total number of VMs requested
   std::vector< double > total_n_j; // number of VMs requested by SaaS j
   for(unsigned i = 0; i < SaaSs.size(); i++)
   {
-    for(auto & app : SaaSs[i] -> get_SaaS() -> get_applications() )
+    for(auto & app : SaaSs[i] -> get_SaaS() -> get_applications() ){
       total_n += ( SaaSs[i] -> get_SaaS() -> get_on_flat(app) + SaaSs[i] -> get_SaaS() -> get_on_demand(app) );
+    }
   }
-  //std::cout << "total_n= "<<total_n << '\n';
+  std::cout << "total_n= "<<total_n << '\n';
   return  total_n;
 }
 
@@ -269,7 +270,7 @@ void Game::solve( void )
     saass[i] -> solve();
     saass[i] -> rounding();
   }
-
+ std::cout << "N = " << saass[0] -> get_N() <<'\n';
   if ( compute_total_n() > saass[0] -> get_N() )
   {
     std::cerr << "Insufficient resources" << '\n';

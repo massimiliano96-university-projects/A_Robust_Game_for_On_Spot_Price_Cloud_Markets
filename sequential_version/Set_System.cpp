@@ -62,7 +62,7 @@ WS Set_System::set_WS( unsigned j)
   //int LAMBDA_a_w =LAMBDA_a_w_distro(gen);                             // overall prediction of the arrival rate for WS w of application a
   double mu_a_w = mu_a_w_distro(gen);                                   // maximum service rate for executng WS class w of application a
   double D_a_w = D_a_w_distro(gen);                                     // queueing  delay for executing WS  class w of application a
-  double nu_a_w = 0.00000045;                                             // penalty for rejecting WS w of the application a
+  double nu_a_w = 0.00000045;                                           // penalty for rejecting WS w of the application a
   double R_bar_a_w = (1.5)*( 1/mu_a_w + D_a_w );                        // WS w average response time threshold
 
   // now we create the WS
@@ -123,6 +123,7 @@ application Set_System::set_application ( unsigned j)
     //std::cout << "LAMBDA_a_w= "<<LAMBDA_a_w << '\n';
     ws.set_LAMBDA_a_w(time*LAMBDA_a_w);
     double lambda_a_w = 0.8 *time* LAMBDA_a_w;    // minimum arrival rate to be guaranteed for WS w of application a
+    //double lambda_a_w = 100;
     //std::cout << "lambda_a_w"<<lambda_a_w << '\n';
     ws.set_lambda_a_w(lambda_a_w);
     count++;
@@ -146,7 +147,7 @@ std::shared_ptr<SaaS> Set_System::set_SaaS( unsigned i)
 
 std::vector<SaaS_Problem> Set_System::set_SaaS_problem ( void )
 {
-  unsigned N = 10000;
+  unsigned N = 1;
   unsigned T = 3600;
   std::vector<SaaS_Problem> system(Number_of_SaaSs);    // we create a vector of SaaS_Problem
 

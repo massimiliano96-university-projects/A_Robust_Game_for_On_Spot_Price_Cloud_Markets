@@ -41,7 +41,7 @@ public:
   std::shared_ptr< IaaS_Problem > get_iaas( void );
 
   //methods
-  double compute_total_n( void );
+  unsigned compute_total_n( void );
 
   bool check_system( void );
 
