@@ -1,2 +1,4 @@
-Throughput, response_time , SaaS_index , app_index , WS_index
-150,0.025,0,0,0
+Tot_VM, Throughput, response_time , SaaS_index , app_index , WS_index
+6,210.259,0.00809365,0,0,0
+6,197.045,0.00842178,0,0,1
+6,126.393,0.0427964,0,0,2

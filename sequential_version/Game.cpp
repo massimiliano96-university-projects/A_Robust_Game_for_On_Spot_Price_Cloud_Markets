@@ -326,13 +326,14 @@ void Game::print_response_time( std::ofstream& ofs1 )
 {
   double current_throughput = .0;
   double current_response_time = .0;
+  unsigned current_number = 0;
 
   // we put an index in order to understand the WS, the app and the SaaS of a given line of parameters
   unsigned SaaS_index = 0;
   unsigned app_index = 0;
   unsigned WS_index = 0;
 
-  ofs1 <<  "Throughput, response_time , SaaS_index , app_index , WS_index\n";
+  ofs1 <<  "Tot_VM, Throughput, response_time , SaaS_index , app_index , WS_index\n";
 
   for( auto & saas : SaaSs )
   {
@@ -344,12 +345,13 @@ void Game::print_response_time( std::ofstream& ofs1 )
 
     for( unsigned i = 0; i < apps.size(); i ++ )
     {
+      current_number = current_saas -> get_on_flat(apps[i]) + current_saas -> get_on_demand(apps[i]) + current_saas -> get_on_spot(apps[i]);
       for( unsigned j = 0; j < apps[i].get_size(); j++)
       {
         current_throughput = current_saas -> get_throughput(current_index);
-        current_response_time= current_saas -> get_response_time(current_index);
+        current_response_time = current_saas -> get_response_time(current_index);
 
-        ofs1 << current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
+        ofs1 << current_number << "," << current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
 
         WS_index++;
         current_index++;

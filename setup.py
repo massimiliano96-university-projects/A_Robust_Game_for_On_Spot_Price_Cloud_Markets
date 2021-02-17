@@ -3,7 +3,7 @@ import csv
 
 application = "saas_robust_game"
 
-path = "/home/massimiliano/Documenti/PACS/project/instances/"
+path = "/home/massimiliano/github/A_Robust_Game_for_On_Spot_Price_Cloud_Markets/instances/"
 
 os.system("cd instances; rm -rf *")
 

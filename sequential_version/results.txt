@@ -1,17 +1,17 @@
 IAAS PROBLEM : 
 sigma =  0.918273
-objective_function = 0
+objective_function = 0.918273
 
 
 SAAS_PROBLEM 0
 
 Results : 
-- Application 0 : 0 1 0
+- Application 0 : 5 0 1
 
 cost threshold : 0.918273
 
-objective_function = 7.74385
-rejected requests = 0
+objective_function = 12.5933
+rejected requests = 259.348
 
 cost_thresholds_history:
 0.918273 

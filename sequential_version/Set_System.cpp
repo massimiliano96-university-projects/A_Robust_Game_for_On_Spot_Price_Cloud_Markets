@@ -147,7 +147,7 @@ std::shared_ptr<SaaS> Set_System::set_SaaS( unsigned i)
 
 std::vector<SaaS_Problem> Set_System::set_SaaS_problem ( void )
 {
-  unsigned N = 1;
+  unsigned N = 1000;
   unsigned T = 3600;
   std::vector<SaaS_Problem> system(Number_of_SaaSs);    // we create a vector of SaaS_Problem
 
