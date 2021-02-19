@@ -16,7 +16,7 @@ for i in range(0, i_max):
     directory_name = application + str(i)
     command1 = "mkdir " +directory_name
     os.system( "cd instances; "+ command1)
-    os.system("cd saas_robust_game; cp config_file.csv "+ path +directory_name)
+    os.system("cd sequential_version; cp config_file.csv "+ path +directory_name)
     r = csv.reader(open(path+directory_name+'/config_file.csv')) # Here your csv file
     lines = list(r)
     lines[1][3] = time[i]
