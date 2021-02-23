@@ -14,4 +14,4 @@ for i in range(0, i_max):
     command1 =  "cd sequential_version; ./exe e "+path+directory_name+"/config_file.csv " +path+directory_name+"/global_parameters.csv " \
                 +path+directory_name+"/SaaSs_parameters.csv "+path+directory_name+"/WSs_parameters.csv "
     os.system(command1)
-    os.system("cd sequential_version; cp results.txt response_time.csv"+ path +directory_name)
+    os.system("cd sequential_version; cp results.txt response_time.csv "+ path +directory_name)
