@@ -22,46 +22,17 @@ def compute_template_dimension():
     n_ws = lines[1][2]
     return int(n_saas), int(n_app), int(n_ws)
 
-"""
-#download of the file
-def download_template():
-    ssh = SSHClient()
-    ssh.load_system_host_keys()
-    ssh.connect(hostname='matemagician.deib.polimi.it',
-                username='simula',
-                password='ricibm76')
-    # SCPCLient takes a paramiko transport as its only argument
-    scp = SCPClient(ssh.get_transport())
-
-    #scp.put('file_path_on_local_machine', 'file_path_on_remote_machine')
-    scp.get(file_path_on_remote_machine+"/FogDaniloConfig.json", path_template)
-    scp.close()
-"""
 
 def prepare_template():
     data = json.load(open(path_template+"/FogDaniloConfig_template.json"))
     n_saas, n_app, n_ws = compute_template_dimension()
+    datum = data["workload"]["class0"]
     for i in range(0, n_ws):
-        datum = data["workload"]["class0"]
         #datum = {f'class{i}':datum}
-        datum= { "class"+str(i):datum }
+        datum= {"class"+str(i):datum }
         data["workload"].update(datum)
         with open(path_template+"/FogDaniloConfig.json", "w") as file:
             json.dump(data, file)
-"""
-def upload_file():
-    ssh = SSHClient()
-    ssh.load_system_host_keys()
-    ssh.connect(hostname='matemagician.deib.polimi.it',
-                username='simula',
-                password='ricibm76')
-    # SCPCLient takes a paramiko transport as its only argument
-    scp = SCPClient(ssh.get_transport())
-    scp.put(path_template+"/FogDaniloConfig.json", file_path_on_remote_machine)
-    #scp.get(file_path_on_remote_machine, path_template)
-    scp.close()
-    ssh.close()
-"""
 
 
 def complete_template( current_row, time ): #prepare the file .json for a single app, the current row input indicates at which row we have to start
@@ -84,7 +55,7 @@ def complete_template( current_row, time ): #prepare the file .json for a single
     gamma = int(lines_param[1][2])
 
     #data["name"] = f'Test{lines_ws[1][6]}_{lines_ws[1][7]}'
-    data["name"] = "Test"+str(lines_ws[1][6])+"_"+str(lines_ws[1][7])
+    data["name"] = "Test_"+str(lines_ws[current_row][6])+"_"+str(lines_ws[current_row][7])
 
     data["nservers"] = lines_rt[current_row][0]
 
@@ -94,16 +65,16 @@ def complete_template( current_row, time ): #prepare the file .json for a single
         data["workload"]["class"+str(class_index)]["lambda"] = lines_ws[i][0]
         class_index += 1
         if gamma > 0 :
-            data["workload"]["class"+str(i)]["mu_min"] = float(lines_ws[i][3]) - float(lines_param[1][5]) * float(lines_ws[i][3])
-            data["workload"]["class"+str(i)]["mu_max"] = float(lines_ws[i][3]) + float(lines_param[1][5]) * float(lines_ws[i][3])
-            data["workload"]["class"+str(i)]["delay_min"] = float(lines_ws[i][2]) - float(lines_param[1][6]) * float(lines_ws[i][2])
-            data["workload"]["class"+str(i)]["delay_max"] = float(lines_ws[i][2]) + float(lines_param[1][6]) * float(lines_ws[i][2])
+            data["workload"]["class"+str(class_index)]["mu_min"] = float(lines_ws[i][3]) - float(lines_param[1][5]) * float(lines_ws[i][3])
+            data["workload"]["class"+str(class_index)]["mu_max"] = float(lines_ws[i][3]) + float(lines_param[1][5]) * float(lines_ws[i][3])
+            data["workload"]["class"+str(class_index)]["delay_min"] = float(lines_ws[i][2]) - float(lines_param[1][6]) * float(lines_ws[i][2])
+            data["workload"]["class"+str(class_index)]["delay_max"] = float(lines_ws[i][2]) + float(lines_param[1][6]) * float(lines_ws[i][2])
             gamma -= 1
         else :
-            data["workload"]["class"+str(i)]["mu_min"] = float(lines_ws[i][3])
-            data["workload"]["class"+str(i)]["mu_max"] = float(lines_ws[i][3])
-            data["workload"]["class"+str(i)]["delay_min"] = float(lines_ws[i][2])
-            data["workload"]["class"+str(i)]["delay_max"] = float(lines_ws[i][2])
+            data["workload"]["class"+str(class_index)]["mu_min"] = float(lines_ws[i][3])
+            data["workload"]["class"+str(class_index)]["mu_max"] = float(lines_ws[i][3])
+            data["workload"]["class"+str(class_index)]["delay_min"] = float(lines_ws[i][2])
+            data["workload"]["class"+str(class_index)]["delay_max"] = float(lines_ws[i][2])
     with open(path_template+"/FogDaniloConfig.json", "w") as file:
         json.dump(data, file)
 
@@ -111,7 +82,7 @@ def single_simulation():
     os.system("pwd")
     os.system("cd "+path_simulation)
     os.system("pwd")
-    os.system("cd "+path_simulation+ ";" + "touch configDanilo_template.json FogDanilo_template.ini")
+    os.system("cd "+path_simulation+ ";" + "touch -c configDanilo_template.json FogDanilo_template.ini")
     os.system("cd "+path_simulation+ ";" + "./update_template.py")
     os.system("cd "+path_simulation+ ";" + "./makeRunfile.sh FogDanilo.ini")
     os.system("cd "+path_simulation+ ";" + "make -j 18 -f Runfile")
@@ -123,8 +94,9 @@ def run_app(current_row, time):
     complete_template(current_row,time)
     os.system("cp "+path_template+"/FogDaniloConfig.json /home/simula/dief_2018_fog_simulator/omnetpp-5.4.1/samples/Fog/simulations/")
     single_simulation()
-    os.system("cp *.data /home/simula/dief_2018_fog_simulator/omnetpp-5.4.1/samples/Fog/simulations/A_Robust_Game_for_On_Spot_Price_Cloud_Markets/instances/saas_robust_game"+str(time))
-    os.system("rm -rf *.data")
+    os.system("cd /home/simula/dief_2018_fog_simulator/omnetpp-5.4.1/samples/Fog/simulations/A_Robust_Game_for_On_Spot_Price_Cloud_Markets/instances/saas_robust_game"+str(time)+ ";" + " rm -rf *.data")
+    os.system("cd "+path_simulation+ ";" + "cp *.data /home/simula/dief_2018_fog_simulator/omnetpp-5.4.1/samples/Fog/simulations/A_Robust_Game_for_On_Spot_Price_Cloud_Markets/instances/saas_robust_game"+str(time))
+    os.system("cd "+path_simulation+ ";" + "rm -rf *.data")
 
 
 def run_saas(current_row,time):
