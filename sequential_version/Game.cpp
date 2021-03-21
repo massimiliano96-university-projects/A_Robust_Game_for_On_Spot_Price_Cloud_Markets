@@ -279,6 +279,8 @@ void Game::solve( void )
 
   iaas -> solve_greedy(); // we solve the IaaS problem, here each SaaS has the on_spot coputed in the field " given_on_spot"
 
+  iteration_count = 1;
+
   //while some SaaSs are not satisfied at all, and those SaaSs can increase their offert, then recompute their cost_threshold
   //Then solve again the IaaS_Problem in order to update the number of on_spot for each SaaS
   bool target1 = !check_system(); // equal to 1 if some SaaS is not satisfied, 0 otherwise
@@ -295,6 +297,7 @@ void Game::solve( void )
     temp = check_changes();
     target2 = temp.first;
     cost_changes_target = temp.second;
+    iteration_count += 1;
   }
 
   // at this step, we reached the local_optimum for the on_spot VMs
@@ -316,8 +319,13 @@ void Game::solve( void )
   std::ofstream ofs2;
   ofs2.open( resp_time_file, std::ios::out | std::ios::trunc ); // i open the file and delete everything
 
+  std::string game_value_file("game_result.csv");
+  std::ofstream ofs3;
+  ofs3.open( game_value_file, std::ios::out | std::ios::trunc );
+
   print( ofs1 );
   print_response_time( ofs2 );
+  print_game_values(ofs3);
 
 }
 
@@ -327,19 +335,21 @@ void Game::print_response_time( std::ofstream& ofs1 )
   double current_throughput = .0;
   double current_response_time = .0;
   unsigned current_number = 0;
+  double current_rejected = .0;
 
   // we put an index in order to understand the WS, the app and the SaaS of a given line of parameters
   unsigned SaaS_index = 0;
   unsigned app_index = 0;
   unsigned WS_index = 0;
 
-  ofs1 <<  "Tot_VM, Throughput, response_time , SaaS_index , app_index , WS_index\n";
+  ofs1 <<  "Tot_VM, rejected_job ,Throughput, response_time , SaaS_index , app_index , WS_index\n";
 
   for( auto & saas : SaaSs )
   {
 
     auto current_saas = saas -> get_SaaS();
     auto apps = current_saas -> get_applications();
+    auto current_rejected_vec = saas -> get_rejected_requests_vec();
 
     unsigned current_index = 0;
 
@@ -350,8 +360,9 @@ void Game::print_response_time( std::ofstream& ofs1 )
       {
         current_throughput = current_saas -> get_throughput(current_index);
         current_response_time = current_saas -> get_response_time(current_index);
+        current_rejected= current_rejected_vec[current_index];
 
-        ofs1 << current_number << "," << current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
+        ofs1 << current_number << "," << current_rejected << ","<< current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
 
         WS_index++;
         current_index++;
@@ -364,6 +375,34 @@ void Game::print_response_time( std::ofstream& ofs1 )
     app_index = 0;
     SaaS_index++;
 
+  }
+
+}
+
+void Game::print_game_values( std::ofstream& ofs1 )
+{
+  double current_iteration = .0;
+  double current_total_rejected = .0;
+  double current_objective_function = .0;
+
+  // we put an index in order to understand the WS, the app and the SaaS of a given line of parameters
+
+  unsigned SaaS_index = 0;
+
+  double Game_Iteration = iteration_count;
+
+  ofs1 <<  "Game_Iteration, SaaS_Iteration, Tot_rejected, obj_function , SaaS_index\n";
+
+  for( auto & saas : SaaSs )
+  {
+
+    current_iteration = saas -> get_iterations();
+    current_total_rejected = saas -> get_total_rejected();
+    current_objective_function = saas -> get_obj_function();
+
+    ofs1 << Game_Iteration <<"," <<current_iteration << "," << current_total_rejected << "," << current_objective_function << "," << SaaS_index << '\n';
+
+    SaaS_index++;
   }
 
 }

@@ -29,8 +29,11 @@ class SaaS_Problem
     double objective_function_value = .0; //the value of the objective function
     double rejected_requests = .0;        // the number of rejected requests
 
+    std::vector<double> rejected_requests_vec;
     //vector in which we store the cost thresholds, in order to map changes during the rod
     std::vector<double> cost_thresholds;
+
+    double iterations = 0;
 
     //function needed to compute the parameters B
     std::vector<std::pair<double, double>> set_param_B ( WS &, application& );
@@ -100,6 +103,14 @@ class SaaS_Problem
     double get_eta_j( void );
 
     unsigned get_R_j( void );
+
+    std::vector<double> get_rejected_requests_vec( void );
+
+    double get_iterations( void );
+
+    double get_obj_function( void );
+
+    double get_total_rejected( void );
 
     //  setter
     void set_N ( unsigned );

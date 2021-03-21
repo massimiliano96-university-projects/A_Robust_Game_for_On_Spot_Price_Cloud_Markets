@@ -217,6 +217,7 @@ void SaaS_Problem::solve(void)
     for(unsigned i = 0; i < y_v.size(); i++)                                                               // computing the total number of rejected requests
     {
       rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
+      rejected_requests_vec.push_back(i);
     }
 
     /*
@@ -245,6 +246,8 @@ void SaaS_Problem::solve(void)
     }
 
     objective_function_value = model.get(GRB_DoubleAttr_ObjVal);
+
+    iterations = model.get(GRB_DoubleAttr_IterCount);
 
   } catch(GRBException e) {
     std::cout << "Error code = " << e.getErrorCode() << std::endl;
@@ -562,4 +565,24 @@ void SaaS_Problem::set_R_j( unsigned value )
 void SaaS_Problem::set_eta_j( double value )
 {
   eta_j = value;
+}
+
+std::vector<double> SaaS_Problem::get_rejected_requests_vec( void )
+{
+  return rejected_requests_vec;
+}
+
+double SaaS_Problem::get_iterations( void )
+{
+  return iterations;
+}
+
+double SaaS_Problem::get_obj_function( void )
+{
+  return objective_function_value;
+}
+
+double SaaS_Problem::get_total_rejected( void )
+{
+  return rejected_requests;
 }
