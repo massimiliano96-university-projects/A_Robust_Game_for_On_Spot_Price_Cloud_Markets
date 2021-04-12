@@ -78,7 +78,8 @@ class SaaS_Problem
 
     void reset_given_on_spot( void );                           // this method reset the number of given_on_spot, this is used from the IaaS_Problem, in the funcion
                                                                 // reset_SaaSs_given_on_spot at the beginning of solve_greedy method
-
+    void reset_on_spot( void );
+    
     // getters
     std::shared_ptr<SaaS> get_SaaS( void );
 

@@ -217,7 +217,7 @@ void SaaS_Problem::solve(void)
     for(unsigned i = 0; i < y_v.size(); i++)                                                               // computing the total number of rejected requests
     {
       rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
-      rejected_requests_vec.push_back(i);
+      rejected_requests_vec.push_back(y_v[i].get(GRB_DoubleAttr_X));
     }
 
     /*
@@ -474,6 +474,15 @@ void SaaS_Problem::reset_desired( void )
   for( auto & app : apps )
   {
     s -> set_desired_on_spot( app, .0 );
+  }
+}
+
+void SaaS_Problem::reset_on_spot( void )
+{
+  auto apps = s -> get_applications();
+  for( auto & app : apps )
+  {
+    s -> set_on_spot( app, .0 );
   }
 }
 
