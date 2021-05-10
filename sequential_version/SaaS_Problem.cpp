@@ -90,7 +90,8 @@ void SaaS_Problem::solve(void)
 {
   try
   {
-
+    rejected_requests = 0;
+    rejected_requests_vec.resize(0);
     GRBEnv env = GRBEnv(); // create a gurobi environment
 
     GRBModel model = GRBModel(env); //create an empty model
@@ -147,7 +148,7 @@ void SaaS_Problem::solve(void)
 
         GRBVar x = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);                          // creating X_a_w
 
-        model.addConstr( x >= web_service.get_lambda_a_w() + 1);                                       // X_a_w >= lambda_a_w
+        model.addConstr( x >= web_service.get_lambda_a_w());                                       // X_a_w >= lambda_a_w
         model.addConstr( y + x >= web_service.get_LAMBDA_a_w() );                                   // X_a_w + y_a_w >= LAMBDA_a_w
 
 
@@ -210,12 +211,195 @@ void SaaS_Problem::solve(void)
       // for debugging
       for(unsigned i = 0; i < x_v.size(); i++)
       {
+        //std::cout<<"throughput = "<<x_v[i].get(GRB_DoubleAttr_X)<<std::endl;
         s->set_throughput(x_v[i].get(GRB_DoubleAttr_X) );
       }
 
 
     for(unsigned i = 0; i < y_v.size(); i++)                                                               // computing the total number of rejected requests
     {
+      //std::cout<<"rejeced = "<< y_v[i].get(GRB_DoubleAttr_X)<<std::endl;
+      rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
+      rejected_requests_vec.push_back(y_v[i].get(GRB_DoubleAttr_X));
+    }
+
+    /*
+    std::cout << "ceil tot vm = "<< ceil_tot_VM.get(GRB_DoubleAttr_X) << '\n';
+    std::cout << "tot vm = "<< total_VM.getValue() << '\n';
+    std::cout << "ceil tot spot = "<< ceil_tot_on_spot.get(GRB_DoubleAttr_X) << '\n';
+    */
+
+    // Now i store the variables in SaaS
+    for(unsigned i = 0; i < (*s).get_size(); i++)                                                          // cicle over all the applications of the SaaS
+    {
+
+      application app = (*s).get_applications()[i];
+
+      std::string r_a = "r" + std::to_string(i);                                                           // create the name for the variables
+      std::string d_a = "d" + std::to_string(i);
+
+      GRBVar r = model.getVarByName(r_a);
+      s->set_on_flat(app, r.get(GRB_DoubleAttr_X));                                           //store on flat VMs for the application i
+
+      GRBVar d = model.getVarByName(d_a);
+      s->set_on_demand(app, d.get(GRB_DoubleAttr_X));                                                 //store on demand VMs for the application i
+      //std::cout << "d = "<< d.get(GRB_DoubleAttr_X)<< '\n';
+
+      s->set_desired_on_spot( app,   eta_j/(1-eta_j) * ( s -> get_on_demand(app) + s -> get_on_flat(app) ));
+
+      int status = model.get(GRB_IntAttr_Status);
+      if(status == GRB_INFEASIBLE)
+        this -> set_infeasible(true);
+      else
+        this -> set_infeasible(false);
+    }
+
+    objective_function_value = model.get(GRB_DoubleAttr_ObjVal);
+
+    iterations = model.get(GRB_DoubleAttr_IterCount);
+
+  } catch(GRBException e) {
+    std::cout << "Error code = " << e.getErrorCode() << std::endl;
+    std::cout << e.getMessage() << std::endl;
+  } catch (...) {
+    std::cout << "Error during optimization" << std::endl;
+  }
+}
+
+void SaaS_Problem::solve_minimal(void)
+{
+  try
+  {
+    rejected_requests = 0;
+    rejected_requests_vec.resize(0);
+    GRBEnv env = GRBEnv(); // create a gurobi environment
+
+    GRBModel model = GRBModel(env); //create an empty model
+
+    GRBLinExpr obj = 0.0; // create a linear expression to construct my objective function
+
+    // Create variables
+
+    GRBLinExpr total_on_flat = 0;   // create a linear expression which will be the sum of all on_flat VMs
+    GRBLinExpr total_VM = 0;        // create a linear expression which will be the sum of all VMs
+    std::vector<double> x_v;        // here we store the variables X_a_w because we need them for the computation of the parameters B
+
+    std::vector<GRBVar> alpha_v;    // here we store all the values of alpha, we need it just for debugging
+    std::vector<GRBVar> beta_v;     // here we store all the values of beta, we need it just for debugging
+    std::vector<GRBVar> y_v;        // here we store the variables the number of rejacted requests
+
+    //std::vector<GRBLinExpr> bx; // for debugging
+
+    double total_on_spot = 0.0;
+
+    // setting the variables and the objective function
+    for(unsigned i = 0; i < s -> get_size(); i++)                                      // cicle over all the applications of the SaaS
+    {
+
+      auto app = s -> get_applications()[i];                                           // ith application
+
+      total_on_spot += s -> get_on_spot(app);
+
+      std::string r_a = "r" + std::to_string(i);                                       // create the name for the variables
+      std::string d_a = "d" + std::to_string(i);
+
+      GRBVar r  = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS, r_a);         // creating r_a
+      GRBVar d  = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS, d_a);         // creating d_a
+
+      obj += rho * r;                                                                  // adding r_a to the objecting funcion
+      obj += delta * d;                                                                // adding d_a to the objecting funcion
+
+      total_on_flat += r;                                                              // updating the sum of all the on flat VMs
+      total_VM += ( r + d );                                                           // updating the sum of all the VMs
+
+      /*
+       I have to split the cicle over the WS of the application i, beacuse first i have to store the variables X_a_w and epsilon
+       and then use them to add the robust constraints
+      */
+
+      for(unsigned j = 0; j < app.get_size(); j++)                                                  // cicle over all the WSs of the application i
+      {
+
+        auto web_service = app.get_web_services()[j];                                               // j-th WS of the i-th application
+
+        GRBVar y = model.addVar(0.0, GRB_INFINITY, 0.0, GRB_CONTINUOUS);                            // creating y_a_w
+
+        obj += (T * web_service.get_nu_a_w() * y);                                                  // adding it to the objecting funcion
+
+        //GRBVar x = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);                          // creating X_a_w
+        double x = web_service.get_lambda_a_w();
+        //model.addConstr( x >= web_service.get_lambda_a_w());                                       // X_a_w >= lambda_a_w
+        model.addConstr( y + x >= web_service.get_LAMBDA_a_w() );                                   // X_a_w + y_a_w >= LAMBDA_a_w
+
+
+        y_v.push_back(y);                                                                           // store y_a_w in y_v
+        x_v.push_back(x);                                                                           // store X_a_w in x_v
+
+      }
+
+      // here we add the robust constraints
+      for(unsigned j = 0; j < app.get_size(); j++)                                       // cicle over all the WSs of the application i
+      {
+        auto web_service = app.get_web_services()[j];                                    // j-th WS of the i-th application
+
+        //GRBLinExpr BX = 0.0;                                                             // linear expression = sum of ( B_bar_a_w_l * X_a_l )
+        double BX = 0.0;
+        auto  B_a_w = set_param_B(web_service, app);                                     // computing the parameters B_bar and B_hat using the function set_param_B
+
+        GRBVar alpha = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);           // creating alpha_a_w
+        alpha_v.push_back(alpha);
+
+
+        GRBLinExpr betas = 0.0;                                                          // linear expression = sum of beta_a_w_l
+
+        for(unsigned l = 0; l < B_a_w.size(); l++)                                       // cicle over WS l of the application i
+        {
+
+          GRBVar beta = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);          // creating beta_a_w_l
+          betas += beta;                                                                 // computng the sum of all betas
+          beta_v.push_back(beta);
+
+          model.addConstr( alpha + beta >= B_a_w[l].second * x_v[l] );                      // second robust constraint
+
+          BX += B_a_w[l].first * x_v[l];                                                  // computing B_bar_a_w_l * X_a_l
+
+        }
+
+        //bx.push_back(BX);  //for debugging
+
+        model.addConstr( - r - d - s -> get_on_spot(app) - BX + gamma*alpha + betas <= 0 );                     //first robust constraint
+
+      }
+    }
+    /*
+    GRBVar ceil_tot_VM = model.addVar(0, GRB_INFINITY, 0, GRB_INTEGER);
+    model.addConstr( total_VM <= ceil_tot_VM );
+    model.addConstr( ceil_tot_VM - 1 <= total_VM + 0.000001);
+
+    GRBVar ceil_tot_on_spot = model.addVar(0, GRB_INFINITY, 0, GRB_INTEGER);
+    model.addConstr( total_on_spot <= ceil_tot_on_spot );
+    model.addConstr( ceil_tot_on_spot - 1 <= total_on_spot + 0.000001);
+    */
+    model.addConstr( total_on_flat <= R_j);                                     // sum of r_a less or equal to R_j_bar
+    //model.addConstr(ceil_tot_VM <= N - ceil_tot_on_spot );                            //  the sum the on flat and on demand VMs lessor equal to N - on_spot VM
+    model.addConstr(total_VM <= N - total_on_spot );
+
+    model.setObjective(obj, GRB_MINIMIZE);                                                // set the objective function
+
+    model.optimize();                                                                     // optimize the model
+
+      // for debugging
+      /*
+      for(unsigned i = 0; i < x_v.size(); i++)
+      {
+        s->set_throughput(x_v[i].get(GRB_DoubleAttr_X) );
+      }
+      */
+
+
+    for(unsigned i = 0; i < y_v.size(); i++)                                                               // computing the total number of rejected requests
+    {
+      std::cout<<"rejeced = "<< y_v[i].get(GRB_DoubleAttr_X)<<std::endl;
       rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
       rejected_requests_vec.push_back(y_v[i].get(GRB_DoubleAttr_X));
     }
@@ -242,7 +426,13 @@ void SaaS_Problem::solve(void)
       s->set_on_demand(app, d.get(GRB_DoubleAttr_X));                                                 //store on demand VMs for the application i
       std::cout << "d = "<< d.get(GRB_DoubleAttr_X)<< '\n';
 
-      s->set_desired_on_spot( app,   eta_j/(1-eta_j) * ( s -> get_on_demand(app) + s -> get_on_flat(app) ));
+      //s->set_desired_on_spot( app,   eta_j/(1-eta_j) * ( s -> get_on_demand(app) + s -> get_on_flat(app) ));
+
+      int status = model.get(GRB_IntAttr_Status);
+      if(status == GRB_INFEASIBLE)
+        this -> set_infeasible(true);
+      else
+        this -> set_infeasible(false);
     }
 
     objective_function_value = model.get(GRB_DoubleAttr_ObjVal);
@@ -257,6 +447,189 @@ void SaaS_Problem::solve(void)
   }
 }
 
+void SaaS_Problem::solve_ideal(void)
+{
+  try
+  {
+    rejected_requests = 0;
+    rejected_requests_vec.resize(0);
+
+    GRBEnv env = GRBEnv(); // create a gurobi environment
+
+    GRBModel model = GRBModel(env); //create an empty model
+
+    GRBLinExpr obj = 0.0; // create a linear expression to construct my objective function
+
+    // Create variables
+
+    GRBLinExpr total_on_flat = 0;   // create a linear expression which will be the sum of all on_flat VMs
+    GRBLinExpr total_VM = 0;        // create a linear expression which will be the sum of all VMs
+    std::vector<GRBVar> x_v;        // here we store the variables X_a_w because we need them for the computation of the parameters B
+
+    std::vector<GRBVar> alpha_v;    // here we store all the values of alpha, we need it just for debugging
+    std::vector<GRBVar> beta_v;     // here we store all the values of beta, we need it just for debugging
+    std::vector<GRBVar> y_v;        // here we store the variables the number of rejacted requests
+
+    //std::vector<GRBLinExpr> bx; // for debugging
+
+    double total_on_spot = 0.0;
+
+    // setting the variables and the objective function
+    for(unsigned i = 0; i < s -> get_size(); i++)                                      // cicle over all the applications of the SaaS
+    {
+
+      auto app = s -> get_applications()[i];                                           // ith application
+
+      total_on_spot += s -> get_on_spot(app);
+
+      std::string r_a = "r" + std::to_string(i);                                       // create the name for the variables
+      std::string d_a = "d" + std::to_string(i);
+      std::string s_bar_a = "s_bar" + std::to_string(i);
+
+      GRBVar r  = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS, r_a);         // creating r_a
+      GRBVar d  = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS, d_a);         // creating d_a
+      GRBVar s_bar = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS, s_bar_a);
+
+      model.addConstr(s_bar <= eta_j/(1-eta_j)*(r+d) );
+
+
+      obj += rho * r;                                                                  // adding r_a to the objecting funcion
+      obj += delta * d;                                                                // adding d_a to the objecting funcion
+      obj += sigma * s_bar;
+
+      total_on_flat += r;                                                              // updating the sum of all the on flat VMs
+      total_VM += ( r + d +s_bar);                                                           // updating the sum of all the VMs
+
+      /*
+       I have to split the cicle over the WS of the application i, beacuse first i have to store the variables X_a_w and epsilon
+       and then use them to add the robust constraints
+      */
+
+      for(unsigned j = 0; j < app.get_size(); j++)                                                  // cicle over all the WSs of the application i
+      {
+
+        auto web_service = app.get_web_services()[j];                                               // j-th WS of the i-th application
+
+        GRBVar y = model.addVar(0.0, GRB_INFINITY, 0.0, GRB_CONTINUOUS);                            // creating y_a_w
+
+        obj += (T * web_service.get_nu_a_w() * y);                                                  // adding it to the objecting funcion
+
+        GRBVar x = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);                          // creating X_a_w
+
+        model.addConstr( x >= web_service.get_lambda_a_w());                                       // X_a_w >= lambda_a_w
+        model.addConstr( y + x >= web_service.get_LAMBDA_a_w() );                                   // X_a_w + y_a_w >= LAMBDA_a_w
+
+
+        y_v.push_back(y);                                                                           // store y_a_w in y_v
+        x_v.push_back(x);                                                                           // store X_a_w in x_v
+
+      }
+
+      // here we add the robust constraints
+      for(unsigned j = 0; j < app.get_size(); j++)                                       // cicle over all the WSs of the application i
+      {
+        auto web_service = app.get_web_services()[j];                                    // j-th WS of the i-th application
+
+        GRBLinExpr BX = 0.0;                                                             // linear expression = sum of ( B_bar_a_w_l * X_a_l )
+
+        auto  B_a_w = set_param_B(web_service, app);                                     // computing the parameters B_bar and B_hat using the function set_param_B
+
+        GRBVar alpha = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);           // creating alpha_a_w
+        alpha_v.push_back(alpha);
+
+
+        GRBLinExpr betas = 0.0;                                                          // linear expression = sum of beta_a_w_l
+
+        for(unsigned l = 0; l < B_a_w.size(); l++)                                       // cicle over WS l of the application i
+        {
+
+          GRBVar beta = model.addVar(0.0, GRB_INFINITY, 0.0  , GRB_CONTINUOUS);          // creating beta_a_w_l
+          betas += beta;                                                                 // computng the sum of all betas
+          beta_v.push_back(beta);
+
+          model.addConstr( alpha + beta >= B_a_w[l].second * x_v[l] );                      // second robust constraint
+
+          BX += B_a_w[l].first * x_v[l];                                                  // computing B_bar_a_w_l * X_a_l
+
+        }
+
+        //bx.push_back(BX);  //for debugging
+
+        model.addConstr( - r - d - s_bar - BX + gamma*alpha + betas <= 0 );                     //first robust constraint
+
+      }
+    }
+    /*
+    GRBVar ceil_tot_VM = model.addVar(0, GRB_INFINITY, 0, GRB_INTEGER);
+    model.addConstr( total_VM <= ceil_tot_VM );
+    model.addConstr( ceil_tot_VM - 1 <= total_VM + 0.000001);
+
+    GRBVar ceil_tot_on_spot = model.addVar(0, GRB_INFINITY, 0, GRB_INTEGER);
+    model.addConstr( total_on_spot <= ceil_tot_on_spot );
+    model.addConstr( ceil_tot_on_spot - 1 <= total_on_spot + 0.000001);
+    */
+    model.addConstr( total_on_flat <= R_j);                                     // sum of r_a less or equal to R_j_bar
+    //model.addConstr(ceil_tot_VM <= N - ceil_tot_on_spot );                            //  the sum the on flat and on demand VMs lessor equal to N - on_spot VM
+    model.addConstr(total_VM <= N - total_on_spot );
+
+    model.setObjective(obj, GRB_MINIMIZE);                                                // set the objective function
+
+    model.optimize();                                                                     // optimize the model
+
+      // for debugging
+      for(unsigned i = 0; i < x_v.size(); i++)
+      {
+        s->set_throughput(x_v[i].get(GRB_DoubleAttr_X) );
+      }
+
+
+    for(unsigned i = 0; i < y_v.size(); i++)                                                               // computing the total number of rejected requests
+    {
+      std::cout<<"rejeced = "<< y_v[i].get(GRB_DoubleAttr_X)<<std::endl;
+      rejected_requests += y_v[i].get(GRB_DoubleAttr_X);
+      rejected_requests_vec.push_back(y_v[i].get(GRB_DoubleAttr_X));
+    }
+
+    /*
+    std::cout << "ceil tot vm = "<< ceil_tot_VM.get(GRB_DoubleAttr_X) << '\n';
+    std::cout << "tot vm = "<< total_VM.getValue() << '\n';
+    std::cout << "ceil tot spot = "<< ceil_tot_on_spot.get(GRB_DoubleAttr_X) << '\n';
+    */
+
+    // Now i store the variables in SaaS
+    for(unsigned i = 0; i < (*s).get_size(); i++)                                                          // cicle over all the applications of the SaaS
+    {
+
+      application app = (*s).get_applications()[i];
+
+      std::string r_a = "r" + std::to_string(i);                                                           // create the name for the variables
+      std::string d_a = "d" + std::to_string(i);
+      std::string s_bar_a = "s_bar"+ std::to_string(i);
+
+      GRBVar r = model.getVarByName(r_a);
+      s->set_on_flat(app, r.get(GRB_DoubleAttr_X));                                           //store on flat VMs for the application i
+
+      GRBVar d = model.getVarByName(d_a);
+      s->set_on_demand(app, d.get(GRB_DoubleAttr_X));                                                 //store on demand VMs for the application i
+      std::cout << "d = "<< d.get(GRB_DoubleAttr_X)<< '\n';
+
+      GRBVar s_bar = model.getVarByName(s_bar_a);
+      s->set_desired_on_spot( app, s_bar.get(GRB_DoubleAttr_X));
+    }
+
+    objective_function_value = model.get(GRB_DoubleAttr_ObjVal);
+
+    iterations = model.get(GRB_DoubleAttr_IterCount);
+
+  } catch(GRBException e) {
+    std::cout << "Error code = " << e.getErrorCode() << std::endl;
+    std::cout << e.getMessage() << std::endl;
+  } catch (...) {
+    std::cout << "Error during optimization" << std::endl;
+  }
+}
+
+
 // this function check if the SaaS is satisfied in terms of desired_on_spot VMs
 bool SaaS_Problem::check( void )
 {
@@ -264,8 +637,11 @@ bool SaaS_Problem::check( void )
   auto apps = s -> get_applications();
   for ( unsigned i = 0; i < s -> get_size(); i++) //iterates among all the applications
   {
-    if( s -> get_given_on_spot( apps[i] ) !=  s -> get_desired_on_spot( apps[i] ) ) // if the requirements of an application are not satisfied
+    //if( s -> get_given_on_spot( apps[i] ) !=  s -> get_desired_on_spot( apps[i] ) ) // if the requirements of an application are not satisfied
+    if( s -> get_desired_on_spot( apps[i] ) - s -> get_on_spot( apps[i] ) > 0.01  )
     {
+      //std::cout<<"on spot : "<<s -> get_on_spot( apps[i] )<<std::endl;
+      //std::cout<<"on spot : "<<s -> get_desired_on_spot( apps[i] )<<std::endl;
       target = false; // then the whole requirements of the SaaS are not satisfied
       break; // hence break the cicle and return false
     }
@@ -398,6 +774,99 @@ void SaaS_Problem::rounding( void )
     //std::cout << "floor on_demand ="<< std::floor(on_demand) << '\n';
 
     residuals = on_flat - std::floor(on_flat)  + on_demand - std::floor(on_demand); // compute the residuals + desired_on_spot - std::floor(desired_on_spot)
+
+    /*
+    if (residuals < 0.000001) {
+      count = std::floor(residuals);
+    }
+    else
+    {
+      count = std::ceil(residuals);
+    }
+    std::cout << "residuals= "<< residuals << '\n';
+ // we have to round the residuals to the next integer in order to satisfy the requirements
+    std::cout << "count= "<< count << '\n';
+    */
+    count = std::ceil(residuals);
+
+    s -> set_desired_on_spot( app, std::floor(desired_on_spot)); // we have took the maximum number of desired_on_spot hence I can't have more of them
+
+
+    //count can be at most 3, hence we check all the possibility
+    if( count == 3 && total_on_flat + count <= R_j )
+    {
+      s -> set_on_flat( app, std::floor(on_flat) + 3 );
+      s -> set_on_demand( app, std::floor(on_demand ));
+      total_on_flat += 3;
+    }
+    else if( count == 3 && total_on_flat + 2 <= R_j )
+    {
+      s -> set_on_flat( app, std::floor(on_flat) + 2 );
+      s -> set_on_demand( app, std::floor(on_demand + 1 ));
+      total_on_flat += 2;
+    }
+    else if ( count == 3 )
+    {
+      s -> set_on_flat( app, std::floor(on_flat));
+      s -> set_on_demand( app, std::floor(on_demand ) + 3 );
+    }
+    if( count == 2 && total_on_flat + count <= R_j )
+    {
+      s -> set_on_flat( app, std::floor(on_flat) + 2 );
+      s -> set_on_demand( app, std::floor(on_demand ));
+      total_on_flat += 2;
+    }
+    else if( count == 2 && total_on_flat + 1 <= R_j )
+    {
+      s -> set_on_flat( app, std::floor(on_flat) + 1 );
+      s -> set_on_demand( app, std::floor(on_demand + 1 ));
+      total_on_flat += 1;
+
+    }
+    else if ( count == 2 )
+    {
+      s -> set_on_flat( app, std::floor(on_flat));
+      s -> set_on_demand( app, std::floor(on_demand ) + 2 );
+    }
+    else if( count == 1 && total_on_flat + 1 <= R_j )
+    {
+      s -> set_on_flat( app, std::floor(on_flat) + 1 );
+      s -> set_on_demand( app, std::floor(on_demand ));
+      total_on_flat += 1;
+    }
+    else if( count == 1 )
+    {
+      s -> set_on_flat( app, std::floor(on_flat));
+      s -> set_on_demand( app, std::floor(on_demand ) + 1 );
+    }
+
+  }
+}
+
+void SaaS_Problem::rounding_ideal( void )
+{
+  auto apps = s -> get_applications();
+  double total_on_flat = .0;
+
+  for(auto app : apps )
+  {
+    total_on_flat += std::floor( s -> get_on_flat(app) );
+    // I need to compute the total number of on_flat VMs in order to respect the constraint : tot_on_flat <= R_j
+  }
+
+  double residuals = .0; // we have to compute the total "residual_VM", i.e. the number of VM we need to add in order to satisfy the SaaS's requirements after the floor_rounding
+  int count  = 0;
+  for(auto app : apps ) // iterate among all the apps
+  {
+    double on_flat =  s -> get_on_flat(app);
+    //std::cout << "on_flat = "<< on_flat << '\n';
+    double on_demand = s -> get_on_demand(app);
+    //std::cout << "on_demand = "<< on_demand << '\n';
+    double desired_on_spot  = s -> get_desired_on_spot(app);
+    //std::cout << "desired_on_spot = "<< desired_on_spot << '\n';
+    //std::cout << "floor on_demand ="<< std::floor(on_demand) << '\n';
+
+    residuals = on_flat - std::floor(on_flat)  + on_demand - std::floor(on_demand) + desired_on_spot - std::floor(desired_on_spot); // compute the residuals
 
     /*
     if (residuals < 0.000001) {

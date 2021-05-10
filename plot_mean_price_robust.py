@@ -4,8 +4,8 @@ import numpy as np
 import os
 import csv
 
-path = "/home/massimiliano/Scrivania/instances_tot_relaxed/exponential/instances_30/"
-#path = "/home/massimiliano/Scrivania/instances_relaxed/"
+path = "/home/massimiliano/Scrivania/instances_tot_relaxed/exponential/instances_1/"
+#path = "/home/massimiliano/Scrivania/single_simulation/"
 
 directory_hour = "saas_robust_game"
 
@@ -48,7 +48,7 @@ x = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '
 
 plt.ylabel('Price of Robustness')
 plt.xlabel('Time of the day [h]')
-plt.title('Daily Price of Robustness #SaaS=1')
+plt.title('Daily Price of Robustness |SaaSs|=1')
 #plt.legend([gamma0, gamma1, gamma2, gamma3, gamma4, gamma5],['Gamma 0', 'Gamma 1', 'Gamma 2', 'Gamma 3', 'Gamma 4', 'Gamma 5'])
 
 colors =plt.rcParams['axes.prop_cycle'].by_key()['color']

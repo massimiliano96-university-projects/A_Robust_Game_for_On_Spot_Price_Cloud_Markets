@@ -1,4 +1,6 @@
-Tot_VM, Throughput, response_time , SaaS_index , app_index , WS_index
-5,172.383,0.00806808,0,0,0
-5,161.561,0.00840181,0,0,1
-5,103.696,0.042768,0,0,2
+On_Spot_VM, Tot_VM, rejected_job ,Throughput, response_time , SaaS_index , app_index , WS_index
+1,6,0,131.391,0.00854337,0,0,0
+1,6,0,123.094,0.00876854,0,0,1
+1,6,0,78.7324,0.0432987,0,0,2
+1,6,0,162.866,0.0531902,0,0,3
+1,6,0,172.44,0.0335982,0,0,4

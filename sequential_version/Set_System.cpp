@@ -62,7 +62,8 @@ WS Set_System::set_WS( unsigned j)
   //int LAMBDA_a_w =LAMBDA_a_w_distro(gen);                             // overall prediction of the arrival rate for WS w of application a
   double mu_a_w = mu_a_w_distro(gen);                                   // maximum service rate for executng WS class w of application a
   double D_a_w = D_a_w_distro(gen);                                     // queueing  delay for executing WS  class w of application a
-  double nu_a_w = 0.00000045;                                           // penalty for rejecting WS w of the application a
+  //double nu_a_w = 0.000045;
+  double nu_a_w = 0.0000045;                                           // penalty for rejecting WS w of the application a
   double R_bar_a_w = (1.5)*( 1/mu_a_w + D_a_w );                        // WS w average response time threshold
 
   // now we create the WS
@@ -209,7 +210,9 @@ std::pair< IaaS_Problem, std::vector<SaaS_Problem> > Set_System::set(void)
   }
 
   // half of the minimum of the cost_threshold
-  double omega = 0.5 * ( (*(SaaSs.end()-1)) -> get_cost_threshold() );  //set omega
+  //double omega = 0.5 * ( (*(SaaSs.end()-1)) -> get_cost_threshold() );  //set omega
+  std::uniform_real_distribution<> omega_distro(0.05, 0.1);
+  double omega = omega_distro(gen);
 
   IaaS_Problem system_of_IaaS( iaas, SaaSs, omega, rho, delta, N );  // cretae the IaaS_Problem
 

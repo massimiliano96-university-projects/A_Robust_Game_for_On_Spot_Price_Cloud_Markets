@@ -60,6 +60,8 @@ void IaaS_Problem::reset( void )
 void IaaS_Problem::solve_greedy ( void )
 {
 
+  double initial_sigma = 5*omega;
+
   std::sort(SaaSs.begin(), SaaSs.end(), SortFunctor1() ); // sorting the SaaS in decreasing order with respect to the cost_threshold
 
   this -> reset();
@@ -75,50 +77,59 @@ void IaaS_Problem::solve_greedy ( void )
 
   double revenues = .0;
   unsigned t = 0;
-
+  //if(SaaSs[ t ] -> get_cost_threshold() >= initial_sigma)
   final_sigma = SaaSs[ t ] -> get_cost_threshold();
   //std::cout << " sigma = "<< final_sigma << '\n'; // debugging
+  std::cout<<final_sigma<<std::endl;
   double total_desired_on_spot = compute_total_desired( t );
 
   double s = std::min( on_spot_available, total_desired_on_spot );
 
   while( s <  on_spot_available && t < SaaSs.size() )
   {
-    double current_revenues = SaaSs[ t ] -> get_cost_threshold() * s;
-    if( current_revenues > revenues )
-    {
-      revenues = current_revenues;
-      final_sigma = SaaSs[ t ] -> get_cost_threshold();
-      //std::cout << " sigma = "<< final_sigma << '\n'; // debugging
-    }
-    t = t + 1;
-    if (t < SaaSs.size())
-    {
-      total_desired_on_spot = compute_total_desired( t );/* message */
-      s = std::min( on_spot_available, total_desired_on_spot );
-    }
-  }
+    double current_revenues = 0.0;
 
-  objective_function_value = revenues;
+      current_revenues = SaaSs[ t ] -> get_cost_threshold() * s;
 
-  for( unsigned j = 0; j < SaaSs.size(); j++)
-  {
-    if( SaaSs[j] -> get_cost_threshold() >= final_sigma )
-    {
-      zs[ j ] = 1;
-      auto apps = SaaSs[j] -> get_applications();
-      for(auto & app : apps )
+      if( current_revenues > revenues && SaaSs[ t ] -> get_cost_threshold() > initial_sigma)
       {
-        double s_a = std::min( SaaSs[j] -> get_desired_on_spot(app), on_spot_available );
-        SaaSs[j] -> set_given_on_spot( app, s_a);
-        on_spot_available -= s_a;
-        on_spot.push_back(s_a);
+        revenues = current_revenues;
+        final_sigma = SaaSs[ t ] -> get_cost_threshold();
+        //std::cout << " sigma = "<< final_sigma << '\n'; // debugging
+      }
+      t = t + 1;
+      if (t < SaaSs.size())
+      {
+        total_desired_on_spot = compute_total_desired( t );/* message */
+        s = std::min( on_spot_available, total_desired_on_spot );
+      }
+
+    objective_function_value = revenues;
+
+    for( unsigned j = 0; j < SaaSs.size(); j++)
+    {
+      auto apps = SaaSs[j] -> get_applications();
+      if( SaaSs[j] -> get_cost_threshold() >= final_sigma )
+      {
+        zs[ j ] = 1;
+        for(auto & app : apps )
+        {
+          double s_a = std::min( SaaSs[j] -> get_desired_on_spot(app), on_spot_available );
+          SaaSs[j] -> set_given_on_spot( app, s_a);
+          on_spot_available -= s_a;
+          on_spot.push_back(s_a);
+        }
+      }
+      else
+      {
+        zs[ j ] = 0;
+        for(auto & app : apps )
+        {
+          SaaSs[j] -> set_given_on_spot( app, 0);
+        }
       }
     }
-    else
-      zs[ j ] = 0;
   }
-
 }
 
 void IaaS_Problem::print ( std::ofstream & ofs )
@@ -126,6 +137,11 @@ void IaaS_Problem::print ( std::ofstream & ofs )
   ofs << "IAAS PROBLEM : "<< '\n';
   ofs << "sigma =  "<< final_sigma << '\n';
   ofs << "objective_function = "<< objective_function_value << '\n';
+  ofs << "z = ";
+  for(unsigned i = 0; i < zs.size(); i++)
+  {
+    ofs << zs[i];
+  }
   ofs << '\n';
 }
 

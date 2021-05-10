@@ -258,7 +258,7 @@ void Game::reset_SaaSs_given_on_spot( void )     // this function reset the give
     ss -> reset_given_on_spot();
 }
 
-
+/*
 // solve function, this function solve the optimization problem
 void Game::solve( void )
 {
@@ -328,7 +328,181 @@ void Game::solve( void )
   print_game_values(ofs3);
 
 }
+*/
 
+void Game::solve( void )
+{
+  auto saass = get_SaaSs(); // we take a vector of shared_ptr to the SaaSs
+  auto iaas = get_iaas(); // we take a shared_ptr to the IaaS
+  for(unsigned i = 0; i < saass.size(); i++)
+  {
+    saass[i] -> solve_minimal();
+    saass[i] -> rounding();
+  }
+  unsigned total_n = this -> compute_total_n();
+  if(total_n < iaas -> get_N())
+  {
+    double total_on_spot = 0.0;
+    double total_on_flat_demand = 0.0;
+    iaas -> set_sigma(5* iaas -> get_omega());
+    //iaas -> set_sigma(2);
+    std::cout<<"initial SIGMA = "<<iaas -> get_sigma()<< std::endl;
+    for( unsigned i = 0; i < saass.size(); i++ ) // we solve the problem and then round for each SaaS
+    {
+      double q_j = saass[i] -> get_q_j();
+      double rho = saass[i] -> get_rho();
+      std::cout<<"q_j*rho = "<<(q_j*rho)<<std::endl;
+      std::cout<<"sigma j = "<<saass[i] -> get_cost_threshold()<<std::endl;
+    }
+    for( unsigned i = 0; i < saass.size(); i++ ) // we solve the problem and then round for each SaaS
+    {
+      saass[i] -> set_sigma(iaas -> get_sigma());
+      //saass[i] -> set_sigma(2.0);
+      std::cout<<"+++++++++++++++++++++ solving IDEAL SaaS = "<<i<<std::endl;
+      saass[i] -> solve_ideal();
+      saass[i] -> rounding_ideal();
+      double sigma = saass[i] -> get_sigma();
+      //double q_j = saass[i] -> get_q_j();
+      //double rho = saass[i] -> get_rho();
+      //saass[i] -> set_sigma_j(std::min(sigma, q_j*rho));
+      auto current_saas = saass[i] -> get_SaaS();
+      auto apps = current_saas -> get_applications();
+      for(auto & app : apps)
+      {
+        total_on_flat_demand += (current_saas -> get_on_flat(app) + current_saas -> get_on_demand(app));
+        if(current_saas-> get_cost_threshold() < sigma)
+        {
+          current_saas -> set_on_spot(app, 0);
+        }
+        else
+        {
+          total_on_spot += current_saas -> get_desired_on_spot(app);
+        }
+      }
+    }
+    double N = saass[0] -> get_N();
+    double sigma = iaas -> get_sigma();
+    for( unsigned i = 0; i < saass.size(); i++ ) // we solve the problem and then round for each SaaS
+    {
+      auto current_saas = saass[i] -> get_SaaS();
+      //if(current_saas-> get_cost_threshold() == sigma)
+      if(current_saas-> get_cost_threshold() >= sigma)
+      {
+        auto apps = current_saas -> get_applications();
+        for(auto & app : apps)
+        {
+          double current_desired = current_saas -> get_desired_on_spot(app);
+          current_saas -> set_on_spot(app, current_desired * std::min(1.0, (N-total_on_flat_demand)/total_on_spot));
+        }
+      }
+    }
+    bool continue_flag = true;
+    iteration_count = 0;
+    while( continue_flag )
+    {
+      iteration_count += 1;
+      continue_flag = false;
+      for( unsigned i = 0; i < saass.size(); i++ ) // we solve the problem and then round for each SaaS
+      {
+        auto current_saas = saass[i] -> get_SaaS();
+        std::cout<<"+++++++++++++++++++++ solving SaaS = "<<i<<std::endl;
+        saass[i] -> solve();
+        saass[i] -> rounding_ideal();
+        double q_j = saass[i] -> get_q_j();
+        double sigma_j = saass[i]->get_cost_threshold();
+        double rho = saass[i] -> get_rho();
+        if(saass[i] -> get_infeasible() && sigma < q_j * rho && sigma_j < sigma)
+        {
+          saass[i] -> solve_ideal();
+          saass[i] -> rounding_ideal();
+          saass[i] -> set_sigma_j(std::min(1.01*sigma_j, q_j*rho));
+          continue_flag =true;
+        }
+        else if(!saass[i]->check() && sigma < q_j * rho && sigma_j < sigma)
+        {
+          saass[i] -> set_sigma_j(std::min(1.01*sigma_j, q_j*rho));
+          continue_flag = true;
+          saass[i] -> solve_ideal();
+          saass[i] -> rounding_ideal();
+          std::cout<<"***************************************************************************************************************************************"<<std::endl;
+        }
+        /*
+        else
+        {
+          bool flag_traffic = false;
+          auto apps = current_saas -> get_applications();
+          unsigned index_app = 0;
+          for(auto & app : apps)
+          {
+            unsigned index_ws = 0;
+            auto wss = app.get_web_services();
+            auto size = wss.size();
+            for(auto & ws : wss)
+            {
+              unsigned correct_index = size * index_app + index_ws ;
+              if(ws.get_LAMBDA_a_w() > current_saas -> get_throughput(correct_index))
+              {
+                flag_traffic = true;
+                std::cout<<"Lambda ="<<ws.get_LAMBDA_a_w()<<std::endl;
+                std::cout<<"Throughput = "<<current_saas -> get_throughput(correct_index)<<std::endl;
+              }
+              index_ws++;
+            }
+            index_app++;
+          }
+          if(flag_traffic && sigma < q_j * rho && sigma_j < sigma)
+          {
+            saass[i] -> set_sigma_j(std::min(1.01*sigma_j, q_j*rho));
+            saass[i] -> solve_ideal();
+            saass[i] -> rounding_ideal();
+            continue_flag =true;
+          }
+        }
+        */
+        std::cout<<"first bool = "<<!saass[i]->check()<<std::endl;
+        std::cout<<"second bool = "<<(sigma<q_j*rho)<<std::endl;
+        std::cout<<"third bool = "<<(sigma_j < sigma)<<std::endl;
+        std::cout<<'\n'<<'\n'<<std::endl;
+      }
+      iaas -> solve_greedy();
+      sigma = iaas -> get_sigma();
+      std::cout<<"sigma = "<<sigma<<std::endl;
+
+      for( unsigned i = 0; i < saass.size(); i++ ) // we solve the problem and then round for each SaaS
+      {
+        saass[i] -> update();
+      }
+    }
+    // at this step, we reached the local_optimum for the on_spot VMs
+    for( unsigned i = 0; i < saass.size(); i++ )
+    {
+      saass[i] -> reset_desired(); // here we reset the desired_on_spot which are meaningless at this step ( we have already computed the final number of on_spot)
+      saass[i] -> rounding(); // now round the problem in order to get the integer values
+      saass[i] -> get_SaaS() -> compute_response_time();
+    }
+
+    // then print the results in results.txt
+    std::string output_file1("results.txt");
+    std::ofstream ofs1;
+    ofs1.open( output_file1, std::ios::out | std::ios::trunc ); // i open the file and delete everything
+
+    std::string resp_time_file("response_time.csv");
+    std::ofstream ofs2;
+    ofs2.open( resp_time_file, std::ios::out | std::ios::trunc ); // i open the file and delete everything
+
+    std::string game_value_file("game_result.csv");
+    std::ofstream ofs3;
+    ofs3.open( game_value_file, std::ios::out | std::ios::trunc );
+
+    print( ofs1 );
+    print_response_time( ofs2 );
+    print_game_values(ofs3);
+  }
+  else
+  {
+    std::cerr << "Infeasible System" << '\n';
+  }
+}
 
 void Game::print_response_time( std::ofstream& ofs1 )
 {
@@ -336,13 +510,14 @@ void Game::print_response_time( std::ofstream& ofs1 )
   double current_response_time = .0;
   unsigned current_number = 0;
   double current_rejected = .0;
+  unsigned current_on_spot = 0;
 
   // we put an index in order to understand the WS, the app and the SaaS of a given line of parameters
   unsigned SaaS_index = 0;
   unsigned app_index = 0;
   unsigned WS_index = 0;
 
-  ofs1 <<  "Tot_VM, rejected_job ,Throughput, response_time , SaaS_index , app_index , WS_index\n";
+  ofs1 <<  "On_Spot_VM, Tot_VM, rejected_job ,Throughput, response_time , SaaS_index , app_index , WS_index\n";
 
   for( auto & saas : SaaSs )
   {
@@ -355,6 +530,7 @@ void Game::print_response_time( std::ofstream& ofs1 )
 
     for( unsigned i = 0; i < apps.size(); i ++ )
     {
+      current_on_spot = current_saas -> get_on_spot(apps[i]);
       current_number = current_saas -> get_on_flat(apps[i]) + current_saas -> get_on_demand(apps[i]) + current_saas -> get_on_spot(apps[i]);
       for( unsigned j = 0; j < apps[i].get_size(); j++)
       {
@@ -362,7 +538,7 @@ void Game::print_response_time( std::ofstream& ofs1 )
         current_response_time = current_saas -> get_response_time(current_index);
         current_rejected= current_rejected_vec[current_index];
 
-        ofs1 << current_number << "," << current_rejected << ","<< current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
+        ofs1 << current_on_spot <<","<<current_number << "," << current_rejected << ","<< current_throughput << "," << current_response_time << "," << SaaS_index << "," << app_index << "," << WS_index <<'\n';
 
         WS_index++;
         current_index++;

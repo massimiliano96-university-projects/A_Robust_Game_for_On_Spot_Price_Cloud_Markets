@@ -4,7 +4,7 @@ import numpy as np
 import os
 import csv
 
-path = "/home/massimiliano/Scrivania/instances_tot_relaxed/lognormal/instances_5/"
+path = "/home/massimiliano/Scrivania/instances_tot_relaxed/lognormal/instances_1/"
 #path = "/home/massimiliano/Scrivania/instances_relaxed/"
 
 directory_hour = "saas_robust_game"
@@ -24,8 +24,6 @@ for hour in range(24):
             #print(float(lines[current_line][1]))
             drop = (float(lines[current_line][1])-float(lines[current_line][0]))/float(lines[current_line][1])*100
             mean_drop_rate = mean_drop_rate + drop
-        if hour == 23 :
-            mean_drop_rate = 1.05*mean_drop_rate
         mean_drop_rate = float(mean_drop_rate)/float(len(lines)-1)
         gamma[i,hour] = mean_drop_rate
 
@@ -38,9 +36,9 @@ gamma5 = gamma[5][:]
 
 x = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']
 
-plt.ylabel('Average Drop Rate')
-plt.xlabel('Hours of the day')
-plt.title('Daily Average DropRate #SaaS=5 (lognormal)')
+plt.ylabel('Average Violation Rate [%]')
+plt.xlabel('Time of the day [h]')
+plt.title('Daily Average Violation |SaaSs|=1 (lognormal)')
 #plt.legend([gamma0, gamma1, gamma2, gamma3, gamma4, gamma5],['Gamma 0', 'Gamma 1', 'Gamma 2', 'Gamma 3', 'Gamma 4', 'Gamma 5'])
 colors =plt.rcParams['axes.prop_cycle'].by_key()['color']
 current_colors = list(colors)

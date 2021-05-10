@@ -4,7 +4,7 @@ import numpy as np
 import os
 import csv
 
-path = "/home/massimiliano/Scrivania/instances_tot_relaxed/lognormal/instances_5/"
+path = "/home/massimiliano/Scrivania/instances_tot_relaxed/exponential/instances_1/"
 #path = "/home/massimiliano/Scrivania/instances_relaxed/"
 
 directory_hour = "saas_robust_game"
@@ -35,8 +35,6 @@ for i in range(6):
             throughput = throughput + float(lines3[current_line][1])
         final_t_risp = t_risp_sim/len(lines1)
         total_throughput = total_throughput + throughput
-        if(hour == 23):
-            final_t_risp = final_t_risp *1.05
         gamma[i,hour] = final_t_risp*throughput
     gamma[i,:] = gamma[i,:]/total_throughput
 
@@ -52,9 +50,9 @@ gamma5 = gamma[5][:]
 
 x = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']
 
-plt.ylabel('Average Response Time')
-plt.xlabel('Hours of the day')
-plt.title('Daily Average Response Time #SaaS = 5')
+plt.ylabel('Average Response Time [s/job]')
+plt.xlabel('Time of the day [h]')
+plt.title('Daily Average Response Time (exponential) |SaaSs| = 1')
 #plt.legend([gamma0, gamma1, gamma2, gamma3, gamma4, gamma5],['Gamma 0', 'Gamma 1', 'Gamma 2', 'Gamma 3', 'Gamma 4', 'Gamma 5'])
 
 plt.plot(x,gamma0, label="Gamma 0")

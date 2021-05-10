@@ -60,9 +60,13 @@ class IaaS_Problem
 
     double get_omega( void );
 
+    unsigned get_N( void ){return N;}
+
     //setter
 
     void set_omega( double );
+
+    void set_sigma(double current_sigma){final_sigma = current_sigma;}
 
     //methods
 

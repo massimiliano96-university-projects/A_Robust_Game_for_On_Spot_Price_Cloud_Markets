@@ -28,12 +28,15 @@ class SaaS_Problem
     double D_dev  = 0.1;                  // uncertainty on mu
     double objective_function_value = .0; //the value of the objective function
     double rejected_requests = .0;        // the number of rejected requests
+    double sigma = 0.0;
 
     std::vector<double> rejected_requests_vec;
     //vector in which we store the cost thresholds, in order to map changes during the rod
     std::vector<double> cost_thresholds;
 
     double iterations = 0;
+
+    bool infeasible = false;
 
     //function needed to compute the parameters B
     std::vector<std::pair<double, double>> set_param_B ( WS &, application& );
@@ -66,6 +69,10 @@ class SaaS_Problem
 
     void solve( void );                                         // this method solve the SaaS_Problem
 
+    void solve_ideal();
+
+    void solve_minimal();
+
     bool check( void );                                         // this method check if the SaaS's requests ( in terms of on_spot VMs ) have been satisfied
 
     void print( std::ofstream& );                               // this method print the results
@@ -74,12 +81,14 @@ class SaaS_Problem
 
     void rounding( void );                                      // this method perform the rounding of the number of the VMs
 
+    void rounding_ideal();
+
     void reset_desired( void );                                 // this method reset the number of desired_on_spot, this is called before the last call of rounding method
 
     void reset_given_on_spot( void );                           // this method reset the number of given_on_spot, this is used from the IaaS_Problem, in the funcion
                                                                 // reset_SaaSs_given_on_spot at the beginning of solve_greedy method
     void reset_on_spot( void );
-    
+
     // getters
     std::shared_ptr<SaaS> get_SaaS( void );
 
@@ -113,12 +122,24 @@ class SaaS_Problem
 
     double get_total_rejected( void );
 
+    double get_sigma(){return sigma;}
+
+    bool get_infeasible(){return infeasible;}
+
     //  setter
+    void set_infeasible( bool current_infeasible){infeasible = current_infeasible;}
+
     void set_N ( unsigned );
 
     void set_sigma( unsigned );
 
     void set_cost_threshold( void );                            // this method update the cost_threshold augmentig it by the 10%
+
+    void set_sigma_j( double value )
+    {
+      s -> set_cost_threshold( value);
+      cost_thresholds.push_back( value );
+    }
 
     void set_T( unsigned );
 
@@ -137,6 +158,8 @@ class SaaS_Problem
     void set_R_j( unsigned );
 
     void set_eta_j( double );
+
+    void set_sigma( double current_sigma){sigma = current_sigma;}
   };
 
 
